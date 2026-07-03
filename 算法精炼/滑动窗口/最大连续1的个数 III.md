@@ -1,0 +1,50 @@
+## 1004. 最大连续1的个数 III
+
+给定一个二进制数组 `nums` 和一个整数 `k`，假设最多可以翻转 `k` 个 `0`，则返回执行操作后 *数组中连续 `1` 的最大个数*。
+
+**示例 1：**
+
+```C++
+输入：nums = [1,1,1,0,0,0,1,1,1,1,0], K = 2
+输出：6
+解释：[1,1,1,0,0,1,1,1,1,1,1]
+粗体数字从 0 翻转到 1，最长的子数组长度为 6。
+```
+
+**思路：** 用滑动窗口维护一个子数组有多少个 1，同时也要维护 0 的个数，窗口是否移动的判断条件为：
+
+1. 0 的个数是否大于 k，若 ＞k 则整体右移，若被移出窗口的是 0，则 `zerocount--`，`left++`
+
+2. 这个子数组中 0 的个数 ≤ k，就代表这个窗口符合要求，统计 1 的个数，然后再 `right++`，继续加入新的元素到子数组中
+
+```C++
+class Solution {
+public:
+    int longestOnes(vector<int>& nums, int k) 
+    {
+        int right = 0;
+        int left = 0;
+        int n = nums.size();
+        int ans = 0;
+        int zerocount = 0;
+        while(right < n)
+        {
+            if(nums[right] == 0)
+            {
+                zerocount++;
+            }
+            while(zerocount > k)
+            {
+                if(nums[left] == 0)
+                zerocount--;
+                left++;
+            }
+            ans = max(ans,right - left + 1);
+            right++;
+        }    
+        return ans;
+    }
+};
+```
+
+---
