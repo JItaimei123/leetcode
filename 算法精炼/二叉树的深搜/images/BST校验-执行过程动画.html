@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>验证二叉搜索树 —— 执行过程动画</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Microsoft YaHei", "Segoe UI", sans-serif; background: #0f172a; color: #e2e8f0; }
+  header { padding: 14px 20px; background: #111827; border-bottom: 1px solid #1f2937; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; }
+  header .sub { color: #94a3b8; font-size: 13px; }
+  .wrap { display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; padding: 14px 20px; }
+  .panel { background: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 12px; }
+  .panel h2 { font-size: 13px; color: #93c5fd; margin: 0 0 8px; font-weight: 600; letter-spacing: .5px; }
+  svg { width: 100%; height: auto; display: block; }
+  .node circle { fill: #1e293b; stroke: #475569; stroke-width: 2; transition: all .18s; }
+  .node text { fill: #e2e8f0; font-size: 15px; text-anchor: middle; dominant-baseline: central; font-weight: 600; }
+  .node.cur circle { fill: #f59e0b; stroke: #fbbf24; stroke-width: 3; }
+  .node.cur text { fill: #1f2937; }
+  .node.ok circle { fill: #16a34a; stroke: #22c55e; }
+  .node.bad circle { fill: #dc2626; stroke: #f87171; }
+  .node.null circle { fill: #1e293b; stroke: #64748b; stroke-dasharray: 4 3; }
+  .edge { stroke: #475569; stroke-width: 2; }
+  .edge.cur { stroke: #fbbf24; stroke-width: 3; }
+  .code { font-family: Consolas, "Courier New", monospace; font-size: 12.5px; line-height: 1.55; }
+  .code .ln { display: flex; gap: 10px; padding: 1px 6px; border-radius: 4px; white-space: pre; }
+  .code .no { color: #64748b; width: 18px; text-align: right; flex: none; }
+  .code .ln.hi { background: #1d4ed8; color: #fff; }
+  .code .ln.hi .no { color: #bfdbfe; }
+  .state { font-family: Consolas, monospace; font-size: 13px; }
+  .state div { display: flex; gap: 8px; padding: 2px 0; }
+  .state .k { color: #94a3b8; width: 92px; flex: none; }
+  .state .v { color: #fde68a; }
+  .state .v.ok { color: #4ade80; }
+  .state .v.bad { color: #f87171; }
+  .stack { display: flex; flex-direction: column-reverse; gap: 4px; font-family: Consolas, monospace; font-size: 12.5px; }
+  .frame { background: #1e293b; border-left: 3px solid #3b82f6; padding: 3px 8px; border-radius: 4px; }
+  .frame.top { border-left-color: #f59e0b; background: #292524; }
+  .frame .f2 { color: #94a3b8; }
+  .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 20px; background: #111827; border-top: 1px solid #1f2937; }
+  button { background: #1d4ed8; color: #fff; border: 0; border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; }
+  button:hover { background: #2563eb; }
+  button.ghost { background: #334155; }
+  button.ghost:hover { background: #475569; }
+  .desc { margin: 0 20px 16px; padding: 10px 14px; background: #1e293b; border-left: 4px solid #38bdf8; border-radius: 6px; font-size: 13.5px; min-height: 42px; }
+  .progress { color: #94a3b8; font-size: 12.5px; margin-left: auto; }
+  label { font-size: 13px; color: #cbd5e1; }
+  select { background: #1e293b; color: #e2e8f0; border: 1px solid #475569; border-radius: 6px; padding: 6px 8px; font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>验证二叉搜索树（中序遍历 + prev）</h1>
+  <span class="sub">动画演示：每一行代码在干什么、prev 怎么变、递归栈怎么涨落</span>
+</header>
+
+<div class="wrap">
+  <section class="panel">
+    <h2>树的形态 / 当前结点</h2>
+    <svg id="svg" viewBox="0 0 640 380"></svg>
+    <h2 style="margin-top:10px">中序访问顺序（prev 的变化）</h2>
+    <div id="order" class="state" style="font-size:14px"></div>
+  </section>
+
+  <aside class="panel">
+    <h2>代码（高亮的是当前执行行）</h2>
+    <div class="code" id="code"></div>
+    <h2 style="margin-top:12px">当前帧的局部状态</h2>
+    <div class="state" id="state"></div>
+    <h2 style="margin-top:12px">递归调用栈（栈顶在最下面）</h2>
+    <div class="stack" id="stack"></div>
+  </aside>
+</div>
+
+<div class="desc" id="desc">点下面「播放」，或按「下一步」逐步看。</div>
+
+<div class="controls">
+  <button id="play">▶ 播放</button>
+  <button class="ghost" id="prev">上一步</button>
+  <button class="ghost" id="next">下一步</button>
+  <button class="ghost" id="reset">重置</button>
+  <label>样例：
+    <select id="treeSel">
+      <option value="valid">例1：合法 BST（5,3,8,1,4,9）</option>
+      <option value="invalid">例2：非法 BST（5,1,4,3,6）</option>
+    </select>
+  </label>
+  <label>速度：<select id="speed">
+    <option value="900">慢</option>
+    <option value="550" selected>中</option>
+    <option value="260">快</option>
+  </select></label>
+  <span class="progress" id="prog"></span>
+</div>
+
+<script>
+const CODES = [
+  'class Solution {',
+  '    long prev = LONG_MIN;',
+  'public:',
+  '    bool isValidBST(TreeNode* root)',
+  '    {',
+  '        if(root == nullptr) return true;',
+  '        bool left = isValidBST(root->left);',
+  '        bool cur = true;',
+  '        if(root->val > prev)',
+  '        {',
+  '          cur = true;',
+  '          prev = root->val;',
+  '        }',
+  '        else',
+  '        cur = false;',
+  '        return isValidBST(root->right) && left && cur;',
+  '    }',
+  '};'
+];
+
+function T(val, left, right) { return { val: val, left: left || null, right: right || null }; }
+
+const TREES = {
+  valid: T(5, T(3, T(1), T(4)), T(8, null, T(9))),
+  invalid: T(5, T(1), T(4, T(3), T(6)))
+};
+
+function prepare(root) {
+  let id = 0, x = 0;
+  const nodes = [], edges = [];
+  (function walk(n, depth) {
+    if (!n) return;
+    n.depth = depth;
+    walk(n.left, depth + 1);
+    n.id = id++; n.x = x++;
+    nodes.push(n);
+    walk(n.right, depth + 1);
+  })(root, 0);
+  nodes.forEach(function (n) {
+    if (n.left) edges.push({ from: n, to: n.left });
+    if (n.right) edges.push({ from: n, to: n.right });
+  });
+  return { root: root, nodes: nodes, edges: edges, cols: x };
+}
+
+function v(x) { return x === null ? 'LONG_MIN' : x; }
+
+function simulate(prep) {
+  const steps = [];
+  let prev = null;
+  const stack = [];
+
+  function push(s) {
+    steps.push({
+      line: s.line,
+      node: s.node || null,
+      prev: prev,
+      left: s.left === undefined ? null : s.left,
+      cur: s.cur === undefined ? null : s.cur,
+      ret: s.ret,
+      stack: stack.map(function (f) { return { node: f.node, left: f.left, cur: f.cur }; }),
+      status: Object.assign({}, status),
+      order: visited.slice(),
+      closed: closed.slice(),
+      desc: s.desc
+    });
+  }
+
+  let status = {};
+  let closed = [];
+  const visited = [];
+
+  function rec(node) {
+    const frame = { node: node, left: null, cur: null };
+    stack.push(frame);
+    push({ line: 4, node: node, desc: '调用 isValidBST(' + (node ? node.val : 'nullptr') + ')，函数入栈' });
+    push({ line: 6, node: node, desc: '检查 root == nullptr ？' });
+
+    if (node === null) {
+      push({ line: 6, node: null, ret: true, desc: 'root 是 nullptr → 直接返回 true（空树视为合法）' });
+      stack.pop();
+      return true;
+    }
+
+    status[node.id] = 'cur';
+    const left = rec(node.left);
+    frame.left = left;
+    push({ line: 7, node: node, left: left, desc: '左子树遍历结束，left = ' + left + '（注意：这里不会提前 return，后面照常执行）' });
+
+    frame.cur = true;
+    push({ line: 8, node: node, left: left, cur: true, desc: 'cur 先设为 true' });
+
+    push({ line: 9, node: node, left: left, cur: true, desc: '比较 root->val（' + node.val + '）与 prev（' + v(prev) + '）' });
+
+    if (prev === null || node.val > prev) {
+      frame.cur = true;
+      push({ line: 11, node: node, left: left, cur: true, desc: node.val + ' > ' + v(prev) + ' 成立 → cur = true' });
+      prev = node.val;
+      visited.push(node.val);
+      push({ line: 12, node: node, left: left, cur: true, desc: 'prev 更新为 ' + node.val + '　中序访问顺序：' + orderNow() });
+      status[node.id] = 'ok';
+    } else {
+      frame.cur = false;
+      push({ line: 15, node: node, left: left, cur: false, desc: node.val + ' ≤ ' + v(prev) + ' → cur = false，这一层已经判定不是 BST' });
+      status[node.id] = 'bad';
+    }
+
+    push({ line: 16, node: node, left: left, cur: frame.cur, desc: '先算右边：isValidBST(root->right)（&& 从左到右求值，右子树一定会被完整走完）' });
+    const right = rec(node.right);
+    const ret = right && left && frame.cur;
+    push({
+      line: 16, node: node, left: left, cur: frame.cur, ret: ret,
+      desc: '右子树返回 ' + right + '，于是 ' + right + ' && ' + left + ' && ' + frame.cur + ' = ' + ret + '，函数返回 ' + ret
+    });
+    stack.pop();
+    closed.push(node.val);
+    return ret;
+  }
+
+  function orderNow() {
+    return visited.join(' → ');
+  }
+
+  const result = rec(prep.root);
+  steps.push({ line: 17, node: prep.root, prev: prev, ret: result, order: visited.slice(), status: Object.assign({}, status), closed: closed.slice(), desc: '全部递归结束，最终返回 ' + result + ' → ' + (result ? '这是一棵合法的二叉搜索树' : '这不是二叉搜索树') });
+  return steps;
+}
+</script>
+<script>
+function render(prep, steps) {
+  const svg = document.getElementById('svg');
+  const cols = Math.max(prep.cols, 1);
+  const W = 640, H = 380;
+  const stepW = Math.min(110, (W - 100) / Math.max(cols - 1, 1));
+  const ox = (W - stepW * (cols - 1)) / 2;
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+  function px(n) { return ox + n.x * stepW; }
+  function py(n) { return 46 + n.depth * 84; }
+
+  let html = '';
+  prep.edges.forEach(function (e) {
+    html += '<line class="edge" data-edge="' + e.from.id + '-' + e.to.id + '" x1="' + px(e.from) + '" y1="' + py(e.from) + '" x2="' + px(e.to) + '" y2="' + py(e.to) + '"/>';
+  });
+  prep.nodes.forEach(function (n) {
+    html += '<g class="node" data-node="' + n.id + '" transform="translate(' + px(n) + ',' + py(n) + ')">' +
+            '<circle r="24"></circle><text>' + n.val + '</text></g>';
+  });
+  svg.innerHTML = html;
+}
+
+let prep = null, steps = [], idx = 0, timer = null;
+
+function buildTree(startStep) {
+  const key = document.getElementById('treeSel').value;
+  prep = prepare(TREES[key]);
+  steps = simulate(prep);
+  idx = 0;
+  render(prep, steps);
+  renderCode();
+  show(startStep || 0);
+}
+
+function renderCode() {
+  const box = document.getElementById('code');
+  let out = '';
+  CODES.forEach(function (t, i) {
+    out += '<div class="ln" data-line="' + (i + 1) + '"><span class="no">' + (i + 1) + '</span><span>' +
+           t.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span></div>';
+  });
+  box.innerHTML = out;
+}
+
+function show(i) {
+  if (!steps.length) return;
+  idx = Math.max(0, Math.min(steps.length - 1, i));
+  const s = steps[idx];
+
+  document.querySelectorAll('.code .ln').forEach(function (el) {
+    el.classList.toggle('hi', Number(el.dataset.line) === s.line);
+  });
+
+  document.querySelectorAll('g.node').forEach(function (g) {
+    const id = Number(g.dataset.node);
+    g.className.baseVal = 'node';
+    if (s.status[id] === 'ok') g.classList.add('ok');
+    else if (s.status[id] === 'bad') g.classList.add('bad');
+  });
+  prep.nodes.forEach(function (n) {
+    const g = document.querySelector('g[data-node="' + n.id + '"]');
+    if (s.node && s.node.id === n.id && s.status[n.id] !== 'ok' && s.status[n.id] !== 'bad') g.classList.add('cur');
+  });
+  prep.edges.forEach(function (e) {
+    const el = document.querySelector('line[data-edge="' + e.from.id + '-' + e.to.id + '"]');
+    el.classList.toggle('cur', s.node && (s.node.id === e.from.id || s.node.id === e.to.id));
+  });
+
+  const box = document.getElementById('state');
+  box.innerHTML =
+    row('当前结点', s.node ? s.node.val : 'nullptr') +
+    row('prev', v(s.prev), s.prev !== null ? 'ok' : '') +
+    row('left', s.left === null ? '—' : String(s.left), s.left === true ? 'ok' : (s.left === false ? 'bad' : '')) +
+    row('cur', s.cur === null ? '—' : String(s.cur), s.cur === true ? 'ok' : (s.cur === false ? 'bad' : '')) +
+    row('返回值', s.ret === undefined ? '—' : String(s.ret), s.ret === true ? 'ok' : (s.ret === false ? 'bad' : ''));
+
+  const st = document.getElementById('stack');
+  st.innerHTML = s.stack.map(function (f, i) {
+    const top = i === s.stack.length - 1 ? ' top' : '';
+    return '<div class="frame' + top + '">isValidBST(' + (f.node ? f.node.val : 'nullptr') + ')' +
+           '<span class="f2">　left=' + (f.left === null ? '—' : f.left) + '　cur=' + (f.cur === null ? '—' : f.cur) + '</span></div>';
+  }).join('') || '<div class="frame">（栈空）</div>';
+
+  document.getElementById('desc').textContent = '第 ' + (idx + 1) + ' / ' + steps.length + ' 步　' + s.desc;
+  const ord = (s.order && s.order.length) ? s.order.join('  →  ') : '（还没访问任何结点）';
+  document.getElementById('order').innerHTML = '<span class="v">' + ord + '</span>';
+  document.getElementById('prog').textContent = (idx + 1) + ' / ' + steps.length;
+}
+function row(k, val, cls) {
+  return '<div><span class="k">' + k + '</span><span class="v ' + (cls || '') + '">' + val + '</span></div>';
+}
+
+document.getElementById('play').onclick = function () {
+  if (timer) { clearInterval(timer); timer = null; this.textContent = '▶ 播放'; return; }
+  this.textContent = '⏸ 暂停';
+  const sp = Number(document.getElementById('speed').value);
+  timer = setInterval(function () {
+    if (idx >= steps.length - 1) { clearInterval(timer); timer = null; document.getElementById('play').textContent = '▶ 播放'; return; }
+    show(idx + 1);
+  }, sp);
+};
+document.getElementById('next').onclick = function () { show(idx + 1); };
+document.getElementById('prev').onclick = function () { show(idx - 1); };
+document.getElementById('reset').onclick = function () { show(0); };
+document.getElementById('treeSel').onchange = buildTree;
+document.getElementById('speed').onchange = function () {
+  if (timer) { clearInterval(timer); timer = null; document.getElementById('play').click(); }
+};
+const qs = new URLSearchParams(location.search);
+if (qs.get('tree')) { document.getElementById('treeSel').value = qs.get('tree'); }
+buildTree(parseInt(qs.get('step') || '0', 10));
+if (qs.get('autoplay') === '1') { document.getElementById('play').click(); }
+</script>
+</body>
+</html>
