@@ -49,7 +49,7 @@ public:
             ret.push_back(board);
             return;
         }
-        //在每一列尝试放上皇后并且处理斜角的情况
+        //在row行的每一列尝试放上皇后并且处理斜角的情况
         for(int i = 0;i<n;i++)
         {
             int idx1 = row - i + n;
