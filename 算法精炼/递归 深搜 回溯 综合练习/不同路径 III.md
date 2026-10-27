@@ -23,25 +23,26 @@
 ```
 
 ```C++
-class Solution {
+class Solution
+{
     int dir[4][2] = {{-1,0},{1,0},{0,-1},{0,1}};
-    int totalsteps = 0;//统计一共需要走过的0
-    int ans = 0;//合法的路径数
-    int m,n;//成员变量
-    bool vis[21][21] = {false};//标记
+    bool vis[21][21] = {false};
+    int ans = 0;//合法路线
+    int totalsteps = 0;//经过0的次数
+    int m,n;
 public:
     int uniquePathsIII(vector<vector<int>>& grid)
     {
         m = grid.size();
         n = grid[0].size();
-        //得出起点
         int startx = 0,starty = 0;
         for(int i = 0;i<m;i++)
         {
             for(int j = 0;j<n;j++)
             {
-                if(grid[i][j] == 0)
-                totalsteps++;
+                //统计一共有多少个0
+                if(grid[i][j] == 0) totalsteps++;
+                //得出起点坐标
                 if(grid[i][j] == 1)
                 {
                     startx = i;
@@ -54,23 +55,27 @@ public:
     }
     void dfs(vector<vector<int>>& grid,int i,int j,int step)
     {
-        //考虑边界情况，是否占用，以及障碍的情况
-        if(i < 0 || i >= m || j < 0 || j >= n || vis[i][j] || grid[i][j] == -1) return;
+        //考虑边界 障碍 已占用的情况
+        if(i < 0 || i >= m || j < 0 || j >= n || grid[i][j] == -1 || vis[i][j]) return;
+        //递归出口:当走到2的时候就结束，判断一下是否符合条件
         if(grid[i][j] == 2)
         {
             if(step == totalsteps)
-            ans++;
-            return;
+            {
+                ans++;
+                return;
+            }
         }
+        //标记占用
         vis[i][j] = true;
         //从四个方向深搜
         for(int k = 0;k<4;k++)
         {
-            int nx = i + dir[k][0];
-            int ny = j + dir[k][1];
-            //如果这个方向的是0，那就传step + 1
-            int nextstep = grid[i][j] == 0 ? step + 1 : step;
-            dfs(grid,nx,ny,nextstep);
+            int x = i + dir[k][0];
+            int y = j + dir[k][1];
+            //如果递归到的下一个位置是0，那就传step+1，不然就传step然后终止
+            int nextstep = grid[i][j] == 0 ? step+1 : step;
+            dfs(grid,x,y,nextstep);
         }
         vis[i][j] = false;
     }
